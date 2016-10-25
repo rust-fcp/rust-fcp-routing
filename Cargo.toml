@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Valentin Lorentz <progval+git@progval.net>"]
 
 [dependencies]
+
+bencode = { git = "https://github.com/arjantop/rust-bencode.git" }
+rustc-serialize = "^0.3"
+
