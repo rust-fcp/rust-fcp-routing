@@ -97,7 +97,9 @@ pub fn main() {
                                 Ok(inner_packets) => {
                                     let inner_packet = inner_packets.get(0).unwrap().clone();
                                     for packet_response in inner_conn2.upkeep() {
-                                        let switch_packet_response = SwitchPacket::new_reply(&switch_packet, &PacketType::Opaque, Payload::CryptoAuthHandshake(packet_response)).unwrap();
+                                        let mut switch_packet_response = SwitchPacket::new_reply(&switch_packet, &PacketType::Opaque, Payload::CryptoAuthHandshake(packet_response)).unwrap();
+                                        assert_eq!(switch_packet_response.switch(4, &0b0001), RoutingDecision::Forward(0b0011));
+                                        println!("Sending switch packet: {}", switch_packet_response.raw.to_hex());
                                         for packet in conn.wrap_message(&switch_packet_response.raw) {
                                             sock.send_to(&packet, dest).unwrap();
                                         }
