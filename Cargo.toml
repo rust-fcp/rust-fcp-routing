@@ -4,9 +4,8 @@ version = "0.1.0"
 authors = ["Valentin Lorentz <progval+git@progval.net>"]
 
 [dependencies]
-dht = "^0.0.5"
-bencode = { git = "https://github.com/arjantop/rust-bencode.git" }
-rustc-serialize = "^0.3"
+dht = { git = "https://github.com/rust-fcp/rust-dht.git", branch = "generic-address" }
+rustc-serialize = "^0.3" # Required to implement dht::GenericId
 
 [dev-dependencies]
 fcp_cryptoauth = { git = "https://github.com/rust-fcp/rust-fcp-cryptoauth.git" }
