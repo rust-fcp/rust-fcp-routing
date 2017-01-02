@@ -100,4 +100,4 @@ impl Hash for NodeData {
     }
 }
 
-type Node = DhtNode<Address, NodeData>;
+pub type Node = DhtNode<Address, NodeData>;
