@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Valentin Lorentz <progval+git@progval.net>"]
 
 [dependencies]
-dht = { git = "https://github.com/rust-fcp/rust-dht.git", branch = "generic-address" }
+dht = { git = "https://github.com/dtantsur/rust-dht.git" }
 rustc-serialize = "^0.3" # Required to implement dht::GenericId
 
 [dev-dependencies]
