@@ -6,9 +6,9 @@ authors = ["Valentin Lorentz <progval+git@progval.net>"]
 [dependencies]
 dht = { git = "https://github.com/dtantsur/rust-dht.git" }
 rustc-serialize = "^0.3" # Required to implement dht::GenericId
+fcp_switching = { git = "https://github.com/rust-fcp/rust-fcp-switching.git" }
 
 [dev-dependencies]
 fcp_cryptoauth = { git = "https://github.com/rust-fcp/rust-fcp-cryptoauth.git" }
-fcp_switching = { git = "https://github.com/rust-fcp/rust-fcp-switching.git" }
 hex = "*"
 rand = "*"

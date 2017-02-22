@@ -1,8 +1,10 @@
 extern crate dht;
 extern crate rustc_serialize;
+extern crate fcp_switching;
 
 pub mod node;
 pub mod node_store;
+pub mod router;
 
 
 #[cfg(test)]

@@ -42,18 +42,18 @@ impl NodeStore {
 
     /// Retrurns an ordered vector of nodes, which are the closest to the
     /// target address this NodeStore knows about.
-    pub fn find_closest_nodes(&self, address: &Address, count: usize) -> Vec<Node> {
-        self.table.find(address, count)
+    pub fn find_closest_nodes(&self, target: &Address, count: usize) -> Vec<Node> {
+        self.table.find(target, count)
     }
 
     /// Tries to get a node. On failure, returns `nb_closest` nodes (or all
     /// nodes in the store, if `nb_closest` is too high) that should be
     /// queried about the searched node.
-    pub fn get_node(&self, address: &Address, nb_closest: usize) -> GetNodeResult {
-        let closest_nodes = self.find_closest_nodes(address, nb_closest);
+    pub fn get_node(&self, target: &Address, nb_closest: usize) -> GetNodeResult {
+        let closest_nodes = self.find_closest_nodes(target, nb_closest);
         match closest_nodes.clone().get(0) { // TODO: do not clone
             Some(closest_node) => {
-                if closest_node.id == *address {
+                if closest_node.id == *target {
                     GetNodeResult::FoundNode(closest_node.clone())
                 }
                 else {
