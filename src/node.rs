@@ -1,3 +1,4 @@
+use std::fmt;
 use std::net::Ipv6Addr;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -6,6 +7,8 @@ use rustc_serialize::{Encodable, Encoder, Decoder};
 
 use dht::GenericId;
 use dht::Node as DhtNode;
+
+pub use fcp_switching::route_packet::NodeData;
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
@@ -21,8 +24,10 @@ fn rotate_64(i: &[u8; 16]) -> [u8; 16] {
     ]
 }
 
+pub const ADDRESS_BITS: usize = 16*8;
+
 /// Wrapper of `Ipv6Addr` that implements `GenericId`
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Address {
     bytes: [u8; 16],
 }
@@ -34,11 +39,33 @@ impl Address {
     pub fn bytes(&self) -> [u8; 16] {
         rotate_64(&self.bytes)
     }
-    pub fn from_ipv6addr(ipv6addr: &Ipv6Addr) -> Address {
+}
+
+impl fmt::Debug for Address {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let ipv6addr = Ipv6Addr::from(self);
+        write!(f, "Address::from(Ipv6Addr::from_str(\"{}\"))", ipv6addr)
+    }
+}
+
+impl<'a> From<&'a Ipv6Addr> for Address {
+    fn from(ipv6addr: &Ipv6Addr) -> Address {
         Address::new(&ipv6addr.octets())
     }
-    pub fn to_ipv6addr(&self) -> Ipv6Addr {
-        Ipv6Addr::from(self.bytes())
+}
+impl From<Ipv6Addr> for Address {
+    fn from(ipv6addr: Ipv6Addr) -> Address {
+        Address::from(&ipv6addr)
+    }
+}
+impl<'a> From<&'a Address> for Ipv6Addr {
+    fn from(addr: &Address) -> Ipv6Addr {
+        Ipv6Addr::from(addr.bytes())
+    }
+}
+impl From<Address> for Ipv6Addr {
+    fn from(addr: Address) -> Ipv6Addr {
+        Ipv6Addr::from(&addr)
     }
 }
 
@@ -75,29 +102,62 @@ impl GenericId for Address {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialOrd)]
-pub struct NodeData {
-    pub public_key: [u8; PUBLIC_KEY_LENGTH],
-    pub path: Path,
-    pub version: u64,
-}
 
-impl PartialEq for NodeData {
-    fn eq(&self, other: &NodeData) -> bool {
-        self.public_key == other.public_key
+/// Wrapper for `dht::Node` with renaming for the new meaning of
+/// its fields (dht's id == cjdns's address; dht's address == cjdns' data)
+#[derive(Clone)]
+pub struct Node(pub DhtNode<Address, NodeData>); // TODO: public only to the crate
+
+impl Node {
+    pub fn new(addr: Address, pk: [u8; PUBLIC_KEY_LENGTH], path: Path, version: u64) -> Node {
+        let data = NodeData {
+            public_key: pk,
+            path: path,
+            version: version,
+        };
+        Node(DhtNode { id: addr, address: data })
+    }
+    pub fn address(&self) -> &Address {
+        &self.0.id
+    }
+    pub fn public_key(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
+        &self.0.address.public_key
+    }
+    pub fn path(&self) -> &Path {
+        &self.0.address.path
+    }
+    pub fn version(&self) -> u64 {
+        self.0.address.version
     }
 }
 
-impl Ord for NodeData {
-    fn cmp(&self, other: &NodeData) -> Ordering {
-        self.public_key.cmp(&other.public_key)
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Node({:?}, {:?}, {:?}, {:?})", self.address(), self.public_key(), self.path(), self.version())
     }
 }
 
-impl Hash for NodeData {
+impl Eq for Node {
+}
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.0.address == other.0.address
+    }
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Node) -> Ordering {
+        self.0.address.cmp(&other.0.address)
+    }
+}
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Hash for Node {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.public_key.hash(state);
+        self.0.address.hash(state);
     }
 }
-
-pub type Node = DhtNode<Address, NodeData>;

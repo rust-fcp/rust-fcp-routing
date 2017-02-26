@@ -28,7 +28,7 @@ impl Router {
 
     /// Wrapper for `NodeStore::get_node` that returns RoutePackets that
     /// should be sent in order to fetch the target node.
-    pub fn get_node(&self, target: &Address, nb_closest: usize) -> (Option<Node>, Vec<(Label, RoutePacket)>) {
+    pub fn get_node(&self, target: &Address, nb_closest: usize) -> (Option<Node>, Vec<(Node, RoutePacket)>) {
         match self.node_store.get_node(target, nb_closest) {
             GetNodeResult::FoundNode(node) => (Some(node), Vec::new()),
             GetNodeResult::ClosestNodes(nodes) => {
@@ -38,7 +38,7 @@ impl Router {
                             .query("fn".to_owned())
                             .target_address(target.bytes().to_vec())
                             .finalize();
-                    (node.address.path, packet)
+                    (node.clone(), packet)
                 });
                 let requests = requests.collect();
                 (None, requests)
