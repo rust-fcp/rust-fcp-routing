@@ -1,5 +1,7 @@
 use fcp_switching::route_packet::{RoutePacket, RoutePacketBuilder};
 use fcp_switching::operation::Label;
+use std::iter::FromIterator;
+use fcp_switching::encoding_scheme::{EncodingScheme, EncodingSchemeForm};
 
 use node_store::{NodeStore, GetNodeResult};
 use node::{Address, Node};
@@ -34,9 +36,12 @@ impl Router {
             GetNodeResult::ClosestNodes(nodes) => {
                 // Ask each of the closest nodes about the target
                 let requests = nodes.iter().map(|node| {
-                    let packet = RoutePacketBuilder::new(PROTOCOL_VERSION, Vec::new())
+                    let encoding_scheme = EncodingScheme::from_iter(vec![EncodingSchemeForm { prefix: 0, bit_count: 3, prefix_length: 0 }].iter());
+                    let packet = RoutePacketBuilder::new(PROTOCOL_VERSION, b"blah".to_vec())
                             .query("fn".to_owned())
                             .target_address(target.bytes().to_vec())
+                            .encoding_index(0)
+                            .encoding_scheme(encoding_scheme)
                             .finalize();
                     (node.clone(), packet)
                 });

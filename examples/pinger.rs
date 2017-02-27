@@ -185,8 +185,9 @@ impl Pinger {
         let mut packets = Vec::new();
         {
             let &mut (path, ref mut inner_conn) = self.inner_conns.get_mut(&handle).unwrap();
+            println!("Sending inner ca message to handle {} with path {:?}: {}", handle, path, message);
             for packet_response in inner_conn.wrap_message_immediately(&message.raw) {
-                let switch_packet = SwitchPacket::new(&path, SwitchPayload::CryptoAuthData(handle, packet_response));
+                let switch_packet = SwitchPacket::new(&path, SwitchPayload::CryptoAuthData(inner_conn.peer_session_handle().unwrap(), packet_response));
                 packets.push(switch_packet);
             }
         }
@@ -263,7 +264,7 @@ impl Pinger {
             println!("Found node. pk: {}", PublicKey(*node.public_key()).to_base32());
             self.ping_nodes.push(node);
         }
-        println!("{} router messages.", messages.len());
+        println!("{} router messages", messages.len());
         for (query_node, message) in messages {
             let message = DataPacket::new(1, &DataPayload::RoutePacket(message));
             self.send_message_to_node(&query_node, message);
@@ -290,7 +291,7 @@ impl Pinger {
     fn on_inner_ca_message(&mut self, switch_packet: &SwitchPacket, handle: u32, ca_message: Vec<u8>) {
         let data_packet = DataPacket { raw: ca_message };
 
-        println!("Received inner ca message: {}", data_packet);
+        println!("Received inner ca message from handle {} with path {:?}: {}", handle, switch_packet.label(), data_packet);
 
         // If it is a query, reply to it.
         match data_packet.payload().unwrap() {
@@ -344,6 +345,7 @@ impl Pinger {
                     reverse_label(&mut path);
                     path
                 };
+                self.address_to_handle.insert(publickey_to_ipv6addr(inner_conn.their_pk()).into(), handle);
                 self.inner_conns.insert(handle, (path, inner_conn));
                 self.on_inner_ca_message(switch_packet, handle, inner_packet);
                 self.random_send_switch_ping(switch_packet);
