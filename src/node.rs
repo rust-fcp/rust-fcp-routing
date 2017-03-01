@@ -66,10 +66,10 @@ impl From<Address> for Ipv6Addr {
 
 impl Key for Address {
     fn bitxor(&self, other: &Self) -> Self {
-        let vec = self.bytes.to_vec().bitxor(&other.bytes.to_vec());
-        assert_eq!(vec.len(), 16);
-        let mut bytes = [0u8; 16];
-        bytes.copy_from_slice(&vec);
+        let mut bytes = [0; 16];
+        for i in 0..bytes.len() {
+            bytes[i] = self.bytes[i] ^ other.bytes[i];
+        }
         Address { bytes: bytes }
     }
     fn bits(&self) -> usize {
