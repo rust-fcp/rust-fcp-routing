@@ -161,18 +161,19 @@ impl Pinger {
     }
 
     fn send_message_to_node(&mut self, node: &Node, message: DataPacket) {
-        let handle_opt = self.address_to_handle.get(node.address()).map(|h| *h);
+        let node_pk = PublicKey::from_slice(node.public_key()).unwrap();
+        let addr = publickey_to_ipv6addr(&node_pk).into();
+        let handle_opt = self.address_to_handle.get(&addr).map(|h| *h);
         match handle_opt {
             Some(handle) => self.send_message_to_handle(handle, message),
             None => {
-                println!("Creating CA session for node {}", Ipv6Addr::from(node.address()));
+                println!("Creating CA session for node {}", Ipv6Addr::from(&addr));
                 let credentials = Credentials::None;
-                let addr = Ipv6Addr::from(node.address());
                 let conn = Wrapper::new_outgoing_connection(
                         self.my_pk.clone(), self.my_sk.clone(),
-                        PublicKey::from_slice(node.public_key()).unwrap(),
+                        node_pk,
                         credentials, None,
-                        format!("outgoing inner {}", addr), None);
+                        format!("outgoing inner {}", Ipv6Addr::from(&addr)), None);
                 let handle = self.gen_handle();
                 self.address_to_handle.insert(addr.into(), handle);
                 self.inner_conns.insert(handle, (node.path().clone(), conn));
@@ -245,7 +246,9 @@ impl Pinger {
 
 
     fn ping_node(&mut self, node: &Node) {
-        println!("Pinging node {}", Ipv6Addr::from(node.address()));
+        let node_pk = PublicKey::from_slice(node.public_key()).unwrap();
+        let addr = publickey_to_ipv6addr(&node_pk);
+        println!("Pinging node {}", Ipv6Addr::from(addr));
         let encoding_scheme = EncodingScheme::from_iter(vec![EncodingSchemeForm { prefix: 0, bit_count: 3, prefix_length: 0 }].iter());
         let route_packet = RoutePacketBuilder::new(18, b"blah".to_vec())
                 .query("pn".to_owned())
@@ -259,11 +262,15 @@ impl Pinger {
 
     fn try_connect_ping_target(&mut self, address: &Address) {
         println!("Trying to connect to {}", Ipv6Addr::from(address));
-        let (node_opt, messages) = self.router.get_node(address, 42);
+        let (node_opt, messages) = {
+            let (node_opt, messages) = self.router.get_node(address, 42);
+            let messages: Vec<_> = messages.into_iter().map(|(node, msg)| (node.clone(), msg)).collect();
+            (node_opt.cloned(), messages)
+        };
         if let Some(node) = node_opt {
             println!("Found node. pk: {}", PublicKey(*node.public_key()).to_base32());
             self.ping_nodes.push(node);
-        }
+        };
         println!("{} router messages", messages.len());
         for (query_node, message) in messages {
             let message = DataPacket::new(1, &DataPayload::RoutePacket(message));
@@ -300,9 +307,10 @@ impl Pinger {
                     self.reply_getpeers(switch_packet, &route_packet, handle);
                 }
                 let (path, ref conn) = *self.inner_conns.get(&handle).unwrap();
-                let node = Node::new(publickey_to_ipv6addr(conn.their_pk()).into(), conn.their_pk().0, path, route_packet.protocol_version as u64);
+                let node = Node::new(conn.their_pk().0, path, route_packet.protocol_version as u64);
                 println!("Adding {} to store.", conn.their_pk().to_base32());
-                self.router.update(&node);
+                let addr = publickey_to_ipv6addr(conn.their_pk()).into();
+                self.router.update(addr, node);
             }
         }
     }
