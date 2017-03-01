@@ -4,9 +4,7 @@ version = "0.1.0"
 authors = ["Valentin Lorentz <progval+git@progval.net>"]
 
 [dependencies]
-dht = { git = "https://github.com/rust-fcp/rust-dht.git", branch = "find-in-all-buckets" }
-#dht = { git = "https://github.com/dtantsur/rust-dht.git" }
-rustc-serialize = "^0.3" # Required to implement dht::GenericId
+simple_kbuckets = "^0.2.0"
 fcp_switching = { git = "https://github.com/rust-fcp/rust-fcp-switching.git" }
 
 [dev-dependencies]

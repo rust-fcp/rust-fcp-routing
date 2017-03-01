@@ -1,5 +1,4 @@
-extern crate dht;
-extern crate rustc_serialize;
+extern crate simple_kbuckets;
 extern crate fcp_switching;
 
 pub mod node;

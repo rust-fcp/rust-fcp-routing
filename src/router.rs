@@ -24,18 +24,18 @@ impl Router {
     }
 
     /// See `NodeStore::update`.
-    pub fn update(&mut self, node: &Node) {
-        self.node_store.update(node)
+    pub fn update(&mut self, address: Address, node: Node) {
+        self.node_store.update(address, node)
     }
 
     /// Wrapper for `NodeStore::get_node` that returns RoutePackets that
     /// should be sent in order to fetch the target node.
-    pub fn get_node(&self, target: &Address, nb_closest: usize) -> (Option<Node>, Vec<(Node, RoutePacket)>) {
+    pub fn get_node(&self, target: &Address, nb_closest: usize) -> (Option<&Node>, Vec<(&Node, RoutePacket)>) {
         match self.node_store.get_node(target, nb_closest) {
             GetNodeResult::FoundNode(node) => (Some(node), Vec::new()),
             GetNodeResult::ClosestNodes(nodes) => {
                 // Ask each of the closest nodes about the target
-                let requests = nodes.iter().map(|node| {
+                let requests = nodes.iter().map(|&(ref _addr, ref node)| {
                     let encoding_scheme = EncodingScheme::from_iter(vec![EncodingSchemeForm { prefix: 0, bit_count: 3, prefix_length: 0 }].iter());
                     let packet = RoutePacketBuilder::new(PROTOCOL_VERSION, b"blah".to_vec())
                             .query("fn".to_owned())
@@ -43,7 +43,7 @@ impl Router {
                             .encoding_index(0)
                             .encoding_scheme(encoding_scheme)
                             .finalize();
-                    (node.clone(), packet)
+                    (*node, packet)
                 });
                 let requests = requests.collect();
                 (None, requests)

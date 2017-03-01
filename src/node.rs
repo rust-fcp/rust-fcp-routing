@@ -3,12 +3,7 @@ use std::net::Ipv6Addr;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
-use rustc_serialize::{Encodable, Encoder, Decoder};
-
-use dht::GenericId;
-use dht::Node as DhtNode;
-
-pub use fcp_switching::route_packet::NodeData;
+use simple_kbuckets::Key;
 
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
@@ -26,7 +21,7 @@ fn rotate_64(i: &[u8; 16]) -> [u8; 16] {
 
 pub const ADDRESS_BITS: usize = 16*8;
 
-/// Wrapper of `Ipv6Addr` that implements `GenericId`
+/// Wrapper of `Ipv6Addr` that implements `simple_kbuckets::Key`
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Address {
     bytes: [u8; 16],
@@ -69,7 +64,7 @@ impl From<Address> for Ipv6Addr {
     }
 }
 
-impl GenericId for Address {
+impl Key for Address {
     fn bitxor(&self, other: &Self) -> Self {
         let vec = self.bytes.to_vec().bitxor(&other.bytes.to_vec());
         assert_eq!(vec.len(), 16);
@@ -77,63 +72,36 @@ impl GenericId for Address {
         bytes.copy_from_slice(&vec);
         Address { bytes: bytes }
     }
-    fn is_zero(&self) -> bool {
-        self.bytes.to_vec().is_zero()
-    }
     fn bits(&self) -> usize {
         self.bytes.to_vec().bits()
     }
-    fn gen(bit_size: usize) -> Self {
-        let vec = Vec::<u8>::gen(bit_size);
-        assert_eq!(vec.len(), 16);
-        let mut bytes = [0u8; 16];
-        bytes.copy_from_slice(&vec);
-        Address { bytes: bytes }
-    }
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.bytes.encode(s)
-    }
-    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        let vec = try!(Vec::<u8>::decode(d));
-        assert_eq!(vec.len(), 16);
-        let mut bytes = [0u8; 16];
-        bytes.copy_from_slice(&vec);
-        Ok(Address { bytes: bytes })
-    }
 }
 
 
-/// Wrapper for `dht::Node` with renaming for the new meaning of
-/// its fields (dht's id == cjdns's address; dht's address == cjdns' data)
-#[derive(Clone)]
-pub struct Node(pub DhtNode<Address, NodeData>); // TODO: public only to the crate
+/// Data of the hash table
+#[derive(Clone, Debug)]
+pub struct Node {
+    public_key: [u8; PUBLIC_KEY_LENGTH],
+    path: Path,
+    version: u64,
+}
 
 impl Node {
-    pub fn new(addr: Address, pk: [u8; PUBLIC_KEY_LENGTH], path: Path, version: u64) -> Node {
-        let data = NodeData {
+    pub fn new(pk: [u8; PUBLIC_KEY_LENGTH], path: Path, version: u64) -> Node {
+        Node {
             public_key: pk,
             path: path,
             version: version,
-        };
-        Node(DhtNode { id: addr, address: data })
-    }
-    pub fn address(&self) -> &Address {
-        &self.0.id
+        }
     }
     pub fn public_key(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
-        &self.0.address.public_key
+        &self.public_key
     }
     pub fn path(&self) -> &Path {
-        &self.0.address.path
+        &self.path
     }
     pub fn version(&self) -> u64 {
-        self.0.address.version
-    }
-}
-
-impl fmt::Debug for Node {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Node({:?}, {:?}, {:?}, {:?})", self.address(), self.public_key(), self.path(), self.version())
+        self.version
     }
 }
 
@@ -141,13 +109,13 @@ impl Eq for Node {
 }
 impl PartialEq for Node {
     fn eq(&self, other: &Node) -> bool {
-        self.0.address == other.0.address
+        self.public_key == other.public_key
     }
 }
 
 impl Ord for Node {
     fn cmp(&self, other: &Node) -> Ordering {
-        self.0.address.cmp(&other.0.address)
+        self.public_key.cmp(&other.public_key)
     }
 }
 impl PartialOrd for Node {
@@ -158,6 +126,6 @@ impl PartialOrd for Node {
 
 impl Hash for Node {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.address.hash(state);
+        self.public_key.hash(state);
     }
 }
